@@ -125,6 +125,7 @@ class OCRDocument(models.Model):
     total_incl_tax = fields.Monetary(
         related="total_amount", currency_field="currency_id", readonly=True
     )
+
     # ======================================================
     # 5) TOTALS (Clear meanings)
     # ======================================================
@@ -147,7 +148,6 @@ class OCRDocument(models.Model):
         string="Total Payable (Incl VAT, Incl Discount)",
         currency_field="currency_id",
     )
-
 
     # ======================================================
     # 6) LOGS & OCR META
@@ -275,15 +275,13 @@ class OCRDocument(models.Model):
 
         return name
 
-
-
     def _clean_text_field(self, value):
         if not value:
             return value
         value = value.replace("\n", " ")
         value = re.sub(r"\s+", " ", value).strip()
         return value
-    
+
     def _fallback_extract_customer_tax_id(self, data):
         """
         Deterministic fallback for Thai receipts.
@@ -326,7 +324,7 @@ class OCRDocument(models.Model):
                 return num
 
         return None
-    
+
     def _fallback_extract_reference(self, data):
         raw_text = data.get("raw_text") or ""
         invoice_id = data.get("invoice_id")
@@ -373,8 +371,6 @@ class OCRDocument(models.Model):
                 return ref
 
         return None
-
-
 
     # ======================================================
     # CREATE / WRITE
@@ -539,57 +535,75 @@ class OCRDocument(models.Model):
     def action_run_ocr(self):
         self.ensure_one()
 
-        endpoint = os.environ.get("AZURE_FORM_ENDPOINT")
-        key = os.environ.get("AZURE_FORM_KEY")
-        if not endpoint or not key:
-            raise UserError(_("Azure Settings Missing"))
-        
-        self.write({"status": "processing", "progress": 10.0})
-        self.env.cr.commit()
+        # ------------------------------------------------------
+        # GUARDS
+        # ------------------------------------------------------
+        if not self.file:
+            raise UserError(_("Please upload a document first."))
+
+        if self.status == "processing":
+            raise UserError(_("OCR is already running."))
+
+        _logger.info("Starting OCR processing for document %s", self.name)
+
+        self.write({
+            "status": "processing",
+            "progress": 10.0,
+            "ocr_error_message": False,
+        })
 
         try:
-            service = AzureInvoiceService(endpoint, key)
-            raw_data = service.analyze(
-                base64.b64decode(self.file),
-                doc_type=self.document_type,
+            # ------------------------------------------------------
+            # AZURE SERVICE (Marketplace Safe)
+            # ------------------------------------------------------
+            try:
+                service = AzureInvoiceService(self.env)
+            except UserError:
+                raise UserError(_(
+                    "Azure OCR is not configured.\n\n"
+                    "Go to Settings → Clario OCR → Azure Configuration."
+                ))
+
+            raw_data = service.analyze(base64.b64decode(self.file))
+
+            if not raw_data:
+                raise UserError(_("No data returned from Azure."))
+
+            # ------------------------------------------------------
+            # STORE RAW RESPONSE
+            # ------------------------------------------------------
+            self.azure_raw_response = json.dumps(
+                raw_data,
+                indent=4,
+                ensure_ascii=False,
+                default=str,
             )
 
-            # Store exact Azure output
-            self.azure_raw_response = json.dumps(raw_data, indent=4, ensure_ascii=False, default=str)
-            # ==========================================
-            # APPLY STRUCTURAL CLEANING
-            # ==========================================
-            data = dict(raw_data)  # later: apply corrections here
-            # Clean vendor name
+            # ------------------------------------------------------
+            # STRUCTURAL CLEANING
+            # ------------------------------------------------------
+            data = dict(raw_data)
+
             data["vendor_name"] = self._clean_vendor_name(data.get("vendor_name"))
-
-            # Clean customer name
             data["customer_name"] = self._clean_text_field(data.get("customer_name"))
-
-            # Clean website
             data["vendor_website"] = self._clean_text_field(data.get("vendor_website"))
 
-            # Clean tax ids
             data["vendor_tax_id"] = self._clean_text_field(data.get("vendor_tax_id"))
             data["customer_tax_id"] = self._clean_text_field(data.get("customer_tax_id"))
-            # ==========================================
-            # DISCOUNT FALLBACK (Flexible Thai Pattern)
-            # ==========================================
+
+            # ------------------------------------------------------
+            # DISCOUNT FALLBACK
+            # ------------------------------------------------------
             if not data.get("discount_amount"):
                 raw_text = data.get("raw_text") or ""
 
-                discount_keywords = [
-                    "ส่วนลด",
-                    "ลดราคา",
-                    "หักส่วนลด",
-                    "โปรโมชั่น",
-                    "โปรโมชัน",
-                    "Discount",
-                    "Promo"
+                keywords = [
+                    "ส่วนลด", "ลดราคา", "หักส่วนลด",
+                    "โปรโมชั่น", "โปรโมชัน",
+                    "Discount", "Promo"
                 ]
 
-                pattern = r"(?:%s)[^\n]*\n?\s*[-]?\s*([0-9]+\.[0-9]{2})" % "|".join(discount_keywords)
-
+                pattern = r"(?:%s)[^\n]*\n?\s*[-]?\s*([0-9]+\.[0-9]{2})" % "|".join(keywords)
                 m = re.search(pattern, raw_text, re.IGNORECASE)
 
                 if m:
@@ -598,47 +612,44 @@ class OCRDocument(models.Model):
                     except Exception:
                         pass
 
-            # Deterministic fallback for Thai receipts
+            # ------------------------------------------------------
+            # THAI RECEIPT FALLBACKS
+            # ------------------------------------------------------
             if not data.get("customer_tax_id"):
                 fallback_tax = self._fallback_extract_customer_tax_id(data)
                 if fallback_tax:
                     data["customer_tax_id"] = fallback_tax
-            # Reference fallback
+
             if not data.get("reference_number"):
                 ref_fallback = self._fallback_extract_reference(data)
                 if ref_fallback:
                     data["reference_number"] = ref_fallback
 
             self.post_processed_response = json.dumps(
-            data, indent=4, ensure_ascii=False, default=str)
+                data,
+                indent=4,
+                ensure_ascii=False,
+                default=str,
+            )
 
-
-            if not data:
-                raise UserError(_("No data returned from Azure."))
-
+            # ------------------------------------------------------
+            # CURRENCY
+            # ------------------------------------------------------
             currency = self._detect_currency(data.get("currency_code"))
 
-            # Totals (keep your current logic)
-            # ======================================================
-            # ======================================================
-            # FINANCIALS (stable deterministic logic)
-            # ======================================================
-            # ======================================================
-            # FINANCIALS — DETERMINISTIC (LINE FIRST + VAT-AWARE)
-            # ======================================================
-
+            # ------------------------------------------------------
+            # FINANCIALS (DETERMINISTIC LOGIC)
+            # ------------------------------------------------------
             discount_val = self._safe_float(data.get("discount_amount")) or 0.0
             vat_val = self._safe_float(data.get("vat_amount")) or 0.0
 
             azure_subtotal = self._safe_float(data.get("subtotal_amount"))
             azure_total = self._safe_float(data.get("total_amount"))
 
-            # 1) Sum items
             items_sum = 0.0
-            items_list = data.get("items") or []
             found_any = False
 
-            for item in items_list:
+            for item in (data.get("items") or []):
                 amt = self._safe_float(item.get("amount"))
                 qty = self._safe_float(item.get("quantity"))
                 unit = self._safe_float(item.get("unit_price"))
@@ -652,32 +663,17 @@ class OCRDocument(models.Model):
 
             items_sum = round(items_sum, 2) if found_any else None
 
-            # 2) Detect if items_sum is "incl VAT" or "excl VAT"
-            # Heuristic: if (items_sum - discount) ~= net paid (often Azure subtotal is net paid for Thai ABB),
-            # then items_sum is likely INCL VAT (like Lotus receipt).
             items_sum_includes_vat = False
 
             if items_sum is not None:
                 net_after_discount = items_sum - discount_val
 
-                # Case 1: net matches Azure subtotal
-                if azure_subtotal is not None and abs(net_after_discount - azure_subtotal) < 0.02:
+                if azure_subtotal and abs(net_after_discount - azure_subtotal) < 0.02:
                     items_sum_includes_vat = True
-
-                # Case 2: net matches Azure total directly
-                elif azure_total is not None and abs(net_after_discount - azure_total) < 0.02:
+                elif azure_total and abs(net_after_discount - azure_total) < 0.02:
                     items_sum_includes_vat = True
-
-                # Case 3: net minus VAT matches Azure total (Watson case)
-                elif azure_total is not None and vat_val and abs((net_after_discount - vat_val) - azure_total) < 0.02:
+                elif azure_total and vat_val and abs((net_after_discount - vat_val) - azure_total) < 0.02:
                     items_sum_includes_vat = True
-
-            # 3) Compute the four fields with consistent meaning
-            # We want:
-            # A) subtotal_excl_vat_excl_discount
-            # B) subtotal_incl_vat_excl_discount
-            # C) subtotal_excl_vat_incl_discount
-            # D) total_payable (incl VAT, incl discount)
 
             subtotal_excl_vat_excl_discount = 0.0
             subtotal_incl_vat_excl_discount = 0.0
@@ -685,82 +681,48 @@ class OCRDocument(models.Model):
             total_payable = 0.0
 
             if items_sum is not None:
+
                 if items_sum_includes_vat:
-                    # items_sum = gross incl VAT (before discount)
                     gross_incl_vat = items_sum
                     net_incl_vat = round(gross_incl_vat - discount_val, 2)
 
-                    gross_excl_vat = round(gross_incl_vat - vat_val, 2) if vat_val else gross_incl_vat
-                    net_excl_vat = round(net_incl_vat - vat_val, 2) if vat_val else net_incl_vat
+                    gross_excl_vat = round(gross_incl_vat - vat_val, 2)
+                    net_excl_vat = round(net_incl_vat - vat_val, 2)
 
-                    subtotal_excl_vat_excl_discount = gross_excl_vat
-                    subtotal_incl_vat_excl_discount = gross_incl_vat
-                    subtotal_excl_vat_incl_discount = max(net_excl_vat, 0.0)
-                    total_payable = net_incl_vat
                 else:
-                    # items_sum = gross excl VAT (before discount)
                     gross_excl_vat = items_sum
                     gross_incl_vat = round(gross_excl_vat + vat_val, 2)
 
                     net_excl_vat = round(gross_excl_vat - discount_val, 2)
                     net_incl_vat = round(net_excl_vat + vat_val, 2)
 
-                    subtotal_excl_vat_excl_discount = gross_excl_vat
-                    subtotal_incl_vat_excl_discount = gross_incl_vat
-                    subtotal_excl_vat_incl_discount = max(net_excl_vat, 0.0)
-                    total_payable = net_incl_vat
-            else:
-                # fallback if no items: use Azure values carefully
-                # Prefer net paid if we have it
-                if azure_subtotal is not None and vat_val is not None:
-                    # assume azure_subtotal might be net incl VAT (Thai ABB case)
-                    net_incl_vat = azure_subtotal
-                    net_excl_vat = round(net_incl_vat - vat_val, 2)
+                subtotal_excl_vat_excl_discount = gross_excl_vat
+                subtotal_incl_vat_excl_discount = gross_incl_vat
+                subtotal_excl_vat_incl_discount = max(net_excl_vat, 0.0)
+                total_payable = net_incl_vat
 
-                    subtotal_excl_vat_incl_discount = max(net_excl_vat, 0.0)
-                    total_payable = net_incl_vat
-                    # gross unknown -> set to net
-                    subtotal_excl_vat_excl_discount = subtotal_excl_vat_incl_discount
-                    subtotal_incl_vat_excl_discount = total_payable
-                elif azure_total is not None:
-                    total_payable = azure_total
-                    subtotal_incl_vat_excl_discount = azure_total
-                    subtotal_excl_vat_excl_discount = round(azure_total - vat_val, 2) if vat_val else azure_total
-                    subtotal_excl_vat_incl_discount = max(subtotal_excl_vat_excl_discount - discount_val, 0.0)
+            elif azure_total:
+                total_payable = azure_total
+                subtotal_incl_vat_excl_discount = azure_total
+                subtotal_excl_vat_excl_discount = round(azure_total - vat_val, 2)
 
-            # Debug log visible in UI field
-            debug_text = f"""
-            items_sum: {items_sum}
-            items_sum_includes_vat: {items_sum_includes_vat}
-            azure_subtotal: {azure_subtotal}
-            azure_total: {azure_total}
-            vat: {vat_val}
-            discount: {discount_val}
+            # ------------------------------------------------------
+            # ADDRESSES + PHONES
+            # ------------------------------------------------------
+            vendor_addr = self._clean_text_field(
+                self._format_structured_address(data.get("vendor_address_struct"))
+            )
 
-            subtotal_excl_vat_excl_discount: {subtotal_excl_vat_excl_discount}
-            subtotal_incl_vat_excl_discount: {subtotal_incl_vat_excl_discount}
-            subtotal_excl_vat_incl_discount: {subtotal_excl_vat_incl_discount}
-            total_payable: {total_payable}
-            """
-            self.extraction_log = debug_text
+            customer_addr = self._clean_text_field(
+                self._format_structured_address(data.get("customer_address_struct"))
+            )
 
-            _logger.info("OCR Financial Debug:\n%s", debug_text)
-
-
-
-
-
-            # Phones
             v_phone = self._normalize_phone(data.get("vendor_phone"))
             c_phone = self._normalize_phone(data.get("customer_phone"))
 
-
-            # Structured addresses -> formatted strings
-            vendor_addr = self._format_structured_address(data.get("vendor_address_struct"))
-            customer_addr = self._format_structured_address(data.get("customer_address_struct"))
-            vendor_addr = self._clean_text_field(vendor_addr)
-            customer_addr = self._clean_text_field(customer_addr)
-
+            # ------------------------------------------------------
+            # WRITE RESULT
+            # ------------------------------------------------------
             self.write({
                 "status": "done",
                 "progress": 100.0,
@@ -768,14 +730,12 @@ class OCRDocument(models.Model):
 
                 "extracted_text": json.dumps(data, indent=4, ensure_ascii=False, default=str),
 
-                # header
                 "invoice_id": data.get("invoice_id"),
                 "invoice_date": data.get("invoice_date"),
                 "due_date": data.get("due_date"),
                 "payment_terms": data.get("payment_terms"),
                 "reference_number": data.get("reference_number"),
 
-                # parties
                 "vendor_name": data.get("vendor_name"),
                 "vendor_branch_name": data.get("vendor_branch_name"),
                 "vendor_tax_id": data.get("vendor_tax_id"),
@@ -788,53 +748,55 @@ class OCRDocument(models.Model):
                 "customer_address": customer_addr,
                 "customer_phone": c_phone,
 
-                # totals
-                                # totals (old fields kept, but made consistent)
                 "currency_id": currency.id,
                 "currency_code": data.get("currency_code") or currency.name,
 
-                # Old fields (keep them meaningful)
-                # subtotal_amount = base subtotal (excl VAT, excl discount)
                 "subtotal_amount": subtotal_excl_vat_excl_discount,
-
-                # vat_base_amount = same base subtotal (used as VAT base)
                 "vat_base_amount": subtotal_excl_vat_excl_discount,
-
                 "discount_amount": discount_val,
                 "vat_amount": vat_val,
-
-                # total_amount = final payable (incl VAT, incl discount effect)
                 "total_amount": total_payable,
 
-                # New clear fields
                 "subtotal_excl_vat_excl_discount": subtotal_excl_vat_excl_discount,
                 "subtotal_incl_vat_excl_discount": subtotal_incl_vat_excl_discount,
                 "subtotal_excl_vat_incl_discount": subtotal_excl_vat_incl_discount,
                 "total_payable": total_payable,
 
-
-                # confidence
-                "confidence_score": (self._safe_float(data.get("confidence_score")) or 0.0),
+                "confidence_score": (
+                    self._safe_float(data.get("confidence_score")) or 0.0
+                ),
             })
 
-            # Replace lines safely
+            # ------------------------------------------------------
+            # REBUILD LINE ITEMS
+            # ------------------------------------------------------
             lines_cmds = [(5, 0, 0)]
+
             for item in (data.get("items") or []):
                 lines_cmds.append((0, 0, {
                     "product_code": item.get("product_code"),
                     "description": item.get("description"),
                     "quantity": item.get("quantity", 1.0),
-                    "unit_price": (item.get("unit_price") or item.get("amount") or 0.0),
+                    "unit_price": item.get("unit_price") or item.get("amount") or 0.0,
                     "discount_amount": item.get("discount_amount", 0.0),
                     "tax_rate": item.get("tax_rate", 0.0),
                     "total_amount": item.get("total_amount", 0.0),
                 }))
+
             self.write({"line_ids": lines_cmds})
+
+            _logger.info("OCR processing completed for document %s", self.name)
+
+        except UserError:
+            raise
 
         except Exception as e:
             _logger.exception("OCR Error")
+
             self.write({
                 "status": "failed",
                 "progress": 0.0,
                 "ocr_error_message": str(e),
             })
+
+            raise UserError(_("OCR processing failed. Please check logs."))

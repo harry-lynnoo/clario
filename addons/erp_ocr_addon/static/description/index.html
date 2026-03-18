@@ -1,0 +1,331 @@
+<section style="font-family: Arial, sans-serif; max-width: 1100px; margin: auto;">
+
+    <!-- Banner -->
+    <div style="text-align:center; margin-bottom: 40px;">
+        <img src="thumbnail.png" style="width:100%; border-radius:10px;">
+    </div>
+
+    <!-- Title -->
+    <h1 style="text-align:center; font-size:38px; margin-bottom:10px;">
+        Clario OCR Accounting Automation for Odoo 17
+    </h1>
+
+    <p style="text-align:center; font-size:18px; color:#555;">
+        Automate supplier invoice processing with AI-powered OCR and generate draft vendor bills directly inside Odoo.
+    </p>
+
+    <hr style="margin:40px 0;">
+
+    <!-- Overview -->
+    <h2 style="font-size:28px;">Overview</h2>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Clario OCR integrates Microsoft Azure Document Intelligence with Odoo 17 to extract structured financial data from invoices and receipts.
+        The module reduces manual data entry, improves accounting accuracy, and accelerates vendor bill processing.
+    </p>
+
+    <hr style="margin:40px 0;">
+
+    <!-- Business Benefits -->
+    <h2 style="font-size:28px;">Business Benefits</h2>
+    
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Reduce manual accounting workload</li>
+        <li>Accelerate invoice processing</li>
+        <li>Improve financial accuracy</li>
+        <li>Standardize vendor bill creation</li>
+        </ul>
+
+    <!-- Features -->
+    <h2 style="font-size:28px;">Key Features</h2>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Automatic invoice and receipt OCR processing</li>
+        <li>Vendor detection and intelligent partner matching</li>
+        <li>VAT, subtotal, and total validation logic</li>
+        <li>Reference number extraction with fallback handling</li>
+        <li>Multi-currency support</li>
+        <li>Seamless integration with Odoo 17 Accounting</li>
+        <li>Secure Azure API configuration via Settings</li>
+    </ul>
+
+    <hr style="margin:40px 0;">
+
+    <!-- How It Works -->
+    <h2 style="font-size:28px;">How It Works</h2>
+
+    <ol style="font-size:16px; line-height:1.8;">
+        <li>Upload an invoice or receipt document.</li>
+        <li>The document is securely processed by Azure Document Intelligence.</li>
+        <li>Structured financial data is extracted automatically.</li>
+        <li>A draft vendor bill is generated inside Odoo.</li>
+        <li>The user reviews and confirms the entry.</li>
+    </ol>
+
+    <hr style="margin:40px 0;">
+
+    <!-- Installation and Setup Guide -->
+    <h2 style="font-size:28px;">Installation and Setup Guide</h2>
+
+    <h3 style="font-size:22px; margin-top:20px;">1. Deployment Options Overview</h3>
+
+    <p style="font-size:16px; line-height:1.8;">
+        The Clario OCR module requires an Odoo environment that supports third-party modules.
+        Users can deploy the system using either cloud-based hosting (Odoo.sh) or an on-premise installation.
+    </p>
+
+    <p style="font-size:16px; line-height:1.8;">
+        <b>Odoo Online (SaaS version) does not support custom modules</b> and is therefore not compatible with Clario OCR.
+    </p>
+
+
+    <h3 style="font-size:22px; margin-top:20px;">2. Option A: Cloud Deployment (Odoo.sh)</h3>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Users may deploy Clario OCR using <b>Odoo.sh</b>, which is the official cloud hosting platform for Odoo.
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Managed hosting</li>
+        <li>Automatic deployment</li>
+        <li>GitHub integration</li>
+    </ul>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Installation steps:
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Create an Odoo.sh project</li>
+        <li>Link a GitHub repository containing the Clario OCR module</li>
+        <li>Deploy the project</li>
+        <li>Install the module from the Apps menu</li>
+    </ul>
+
+    <p style="font-size:16px; line-height:1.8;">
+        <b>Note:</b> Odoo.sh is a paid service and requires a subscription.
+    </p>
+
+
+    <h3 style="font-size:22px; margin-top:20px;">3. Option B: Local Deployment (On Premise, Recommended for Testing)</h3>
+
+    <p style="font-size:16px; line-height:1.8;">
+        For development, testing, or cost-effective usage, users can deploy Odoo locally.
+    </p>
+
+
+    <h4 style="font-size:20px; margin-top:15px;">Method 1: Docker Setup (Recommended)</h4>
+
+    <p style="font-size:16px; line-height:1.8;">
+        This is the recommended approach due to its simplicity and consistency.
+    </p>
+
+    <p style="font-size:16px; line-height:1.8;">
+        <b>Requirements:</b>
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Docker</li>
+        <li>Docker Compose</li>
+    </ul>
+
+    <p style="font-size:16px; line-height:1.8;">
+        If Docker is not installed, download and install it from:
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li><a href="https://www.docker.com/products/docker-desktop/" target="_blank">https://www.docker.com/products/docker-desktop/</a></li>
+    </ul>
+
+    <p style="font-size:16px; line-height:1.8;">
+        After installation, ensure Docker is running before proceeding.
+    </p>
+
+    <p style="font-size:16px; line-height:1.8;">
+        <b>Steps:</b>
+    </p>
+
+    <pre style="background:#f6f6f6; padding:12px; border-radius:8px; overflow:auto; margin:10px 0; line-height:1.5;">
+    git clone https://github.com/harry-lynnoo/odoo-17-clario-ocr.git
+    cd odoo-17-clario-ocr</pre>
+
+    <pre style="background:#f6f6f6; padding:12px; border-radius:8px; overflow:auto; margin:10px 0; line-height:1.5;">
+    docker-compose up</pre>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Open Odoo in your browser:
+    </p>
+
+    <pre style="background:#f6f6f6; padding:12px; border-radius:8px; margin:10px 0;">
+    http://localhost:8069</pre>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Create a database and log in to start using the system.
+    </p>
+
+
+    <h4 style="font-size:20px; margin-top:15px;">Method 2: Manual Installation (Advanced Users)</h4>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Users may also install Odoo manually using Python and PostgreSQL.
+    </p>
+
+    <p style="font-size:16px; line-height:1.8;">
+        <b>Requirements:</b>
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Python (3.x)</li>
+        <li>PostgreSQL</li>
+        <li>Odoo 17 source code</li>
+    </ul>
+
+    <p style="font-size:16px; line-height:1.8;">
+        <b>Steps:</b>
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Install dependencies (Python and PostgreSQL)</li>
+        <li>Download Odoo 17 source code</li>
+        <li>Configure the <b>odoo.conf</b> file</li>
+        <li>Add the Clario OCR module to the addons directory</li>
+    </ul>
+
+    <pre style="background:#f6f6f6; padding:12px; border-radius:8px; overflow:auto; margin:10px 0; line-height:1.5;">
+    python odoo-bin</pre>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Access Odoo via browser and create a database to begin using the system.
+    </p>
+
+    <!-- Video Guides -->
+    <h2 style="font-size:28px;">Video Guides</h2>
+
+    <!-- Video 1 -->
+    <h3 style="font-size:22px; margin-top:30px;">1. Module Installation in Odoo</h3>
+
+    <div style="text-align:center; margin-top:20px;">
+        <video width="90%" autoplay muted loop playsinline preload="metadata">
+            <source src="video1.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <p style="font-size:16px; line-height:1.8; margin-top:15px;">
+        This video demonstrates how to install the Clario OCR module from the Odoo Apps menu.
+        The process includes searching for the module, installing it, and enabling the OCR features
+        inside the Odoo environment.
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Open the Apps menu in Odoo</li>
+        <li>Search for <b>Clario OCR</b></li>
+        <li>Click Install</li>
+        <li>The module becomes available in the Accounting workflow</li>
+    </ul>
+
+    <hr style="margin:30px 0;">
+
+
+    <!-- Video 2 -->
+    <h3 style="font-size:22px;">2. Using Clario OCR to Process Invoices</h3>
+
+    <div style="text-align:center; margin-top:20px;">
+        <video width="90%" autoplay muted loop playsinline preload="metadata">
+            <source src="video2.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <p style="font-size:16px; line-height:1.8; margin-top:15px;">
+        This video shows the complete OCR workflow. Users upload an invoice or receipt,
+        and Clario automatically extracts structured accounting data and generates a draft
+        vendor bill inside Odoo.
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Upload an invoice or receipt</li>
+        <li>Clario sends the document to Azure Document Intelligence</li>
+        <li>Extracted data is processed and validated</li>
+        <li>A draft vendor bill is automatically generated</li>
+    </ul>
+
+    <hr style="margin:30px 0;">
+
+
+    <!-- Video 3 -->
+    <h3 style="font-size:22px;">3. Azure Document Intelligence Setup</h3>
+
+    <div style="text-align:center; margin-top:20px;">
+        <video width="90%" autoplay muted loop playsinline preload="metadata">
+            <source src="video3.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <p style="font-size:16px; line-height:1.8; margin-top:15px;">
+        This video explains how to create a Microsoft Azure account, provision a
+        Document Intelligence resource, obtain the API endpoint and key, and configure
+        them inside Clario OCR settings in Odoo.
+    </p>
+
+    <ul style="font-size:16px; line-height:1.8;">
+        <li>Create a new account or sign in to the Azure Portal</li>
+        <li>Create a Document Intelligence resource</li>
+        <li>Copy the API Endpoint and API Key</li>
+        <li>Open Odoo → Settings → Clario OCR</li>
+        <li>Paste the endpoint and key to activate OCR processing</li>
+    </ul>
+
+    <!-- Requirements -->
+    <hr style="margin:40px 0;">
+
+    <h2 style="font-size:28px;">Third-Party Service Requirement</h2>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Clario OCR integrates with <b>Microsoft Azure Document Intelligence</b> to perform
+        optical character recognition (OCR) and structured data extraction from invoices
+        and receipts.
+    </p>
+
+    <p style="font-size:16px; line-height:1.8;">
+        To use OCR processing, users must provide their own Azure Document Intelligence
+        API endpoint and key within the Clario OCR settings in Odoo.
+    </p>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Microsoft Azure offers a <b>free tier that includes up to 500 pages of document
+        processing per month</b>, which is sufficient for many small and medium business
+        use cases.
+    </p>
+
+    <p style="font-size:16px; line-height:1.8;">
+        Microsoft Azure is a third-party cloud service. Any usage, billing, or service limitations
+        are managed directly by Microsoft and are not included in the price of this module.
+    </p>
+
+        <!-- Technical -->
+        <h2 style="font-size:28px;">Technical Specifications</h2>
+
+        <ul style="font-size:16px; line-height:1.8;">
+            <li>Compatible with Odoo 17</li>
+            <li>Built using standard Odoo ORM architecture</li>
+            <li>No hardcoded credentials</li>
+            <li>Multi-company compatible</li>
+            <li>Fully uninstallable without database corruption</li>
+        </ul>
+
+        <hr style="margin:40px 0;">
+
+    <!-- Support -->
+    <h2 style="font-size:28px;">Support</h2>
+
+<p style="font-size:16px;">
+    For technical support or inquiries, please contact:
+</p>
+
+<ul style="font-size:16px; line-height:1.8;">
+    <li><a href="mailto:ootunthein6969@gmail.com">ootunthein6969@gmail.com</a></li>
+</ul>
+
+</section>
